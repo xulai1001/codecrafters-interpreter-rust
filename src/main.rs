@@ -1,34 +1,110 @@
-use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::path::PathBuf;
+use std::fmt::Display;
+use std::str::Chars;
+use anyhow::{anyhow, Result};
+use clap::{Parser, Subcommand};
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        writeln!(io::stderr(), "Usage: {} tokenize <filename>", args[0]).unwrap();
-        return;
+/// 参考rat-718的样例(有问题)  
+/// Token定义
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Token {
+    LeftParen,
+    RightParen,
+    Eof
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Token::LeftParen => "LEFT_PAREN ( null",
+            Token::RightParen => "RIGHT_PAREN ) null",
+            Token::Eof => "EOF  null",
+        })
     }
+}
 
-    let command = &args[1];
-    let filename = &args[2];
+/// 使用迭代器实现的词法分析器的内部状态  
+/// 'de 表示给定&str的生命周期 
+pub struct Lexer<'de> {
+    /// 剩余切片
+    rest: Chars<'de>,
+    /// 整个切片，用于错误提示
+    whole: &'de str,
+    /// 当前位置，用于错误提示
+    index: usize
+}
 
-    match command.as_str() {
-        "tokenize" => {
-            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
-                writeln!(io::stderr(), "Failed to read file {}", filename).unwrap();
+impl <'de> Lexer<'de> {
+    /// 初始状态
+    pub fn new(input: &'de str) -> Self {
+        Self {
+            rest: input.chars(), 
+            whole: input,
+            index: 0
+        }
+    }
+}
+
+impl Iterator for Lexer<'_> {
+    // 如果迭代器直接返回Token，那么出错时，next() -> Option<Token> == None
+    // 在外部获取不到Lexer的内部状态以产生错误信息
+    // 所以应在迭代器内部进行异常处理，返回Token或错误
+    type Item = Result<Token>;
+
+    // peek?
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.rest.next() {
+            Some('(') => {
+                self.index += 1;
+                Some(Ok(Token::LeftParen))
+            }
+            Some(')') => {
+                self.index += 1;
+                Some(Ok(Token::RightParen))
+            }
+            Some(ch) => {
+                Some(Err(anyhow!("unexpected token: {ch}")))
+            }
+            None => None
+        }
+    }
+}
+
+#[derive(Parser, Debug)]
+#[command(version=None, about=None, long_about=None)]
+struct Args {
+    #[command(subcommand)]
+    cmd: Commands
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    Tokenize { filename: PathBuf }
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+
+    match args.cmd {
+        Commands::Tokenize { filename } => {
+            let file_contents = fs::read_to_string(&filename).unwrap_or_else(|_| {
+                eprintln!("Failed to read file {:?}", filename);
                 String::new()
             });
 
             // Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
+                let lexer = Lexer::new(&file_contents);
+                let _: Result<Vec<()>> = lexer.map(|token| {
+                    println!("{}", token?);
+                    Ok(())
+                }).collect();
+                println!("EOF  null");
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
             }
         }
-        _ => {
-            writeln!(io::stderr(), "Unknown command: {}", command).unwrap();
-            return;
-        }
     }
+    Ok(())
 }
