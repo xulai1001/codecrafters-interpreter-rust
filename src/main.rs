@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::fmt::Display;
+use std::iter::Peekable;
 use std::str::Chars;
 use std::process::exit;
 use clap::{Parser, Subcommand};
@@ -21,6 +22,9 @@ pub enum Token {
     Minus,
     Semicolon,
     Eol,
+    // 2字符Token
+    Equal,
+    EqualEqual,
     Eof
 }
 
@@ -38,6 +42,8 @@ impl Display for Token {
             Token::Plus => "PLUS + null",
             Token::Minus => "MINUS - null",
             Token::Eol => "EOL  null",
+            Token::Equal => "EQUAL = null",
+            Token::EqualEqual => "EQUAL_EQUAL == null",
             Token::Eof => "EOF  null",
         }) 
     }
@@ -47,7 +53,7 @@ impl Display for Token {
 /// 'de 表示给定&str的生命周期 
 pub struct Lexer<'de> {
     /// 剩余切片
-    rest: Chars<'de>,
+    rest: Peekable<Chars<'de>>,
     /// 整个切片，用于错误提示
     whole: &'de str,
     /// 当前位置，用于错误提示
@@ -60,7 +66,7 @@ impl <'de> Lexer<'de> {
     /// 初始状态
     pub fn new(input: &'de str) -> Self {
         Self {
-            rest: input.chars(), 
+            rest: input.chars().peekable(), 
             whole: input,
             index: 0,
             line: 1
@@ -74,27 +80,39 @@ impl Iterator for Lexer<'_> {
     // 所以应在迭代器内部进行异常处理，返回Token或错误
     type Item = Result<Token>;
 
-    // peek?
+    // 引入peek(next_if_eq)
     fn next(&mut self) -> Option<Self::Item> {
-        match self.rest.next() {
-            Some('(') => { self.index += 1; Some(Ok(Token::LeftParen)) },
-            Some(')') => { self.index += 1; Some(Ok(Token::RightParen)) },
-            Some('{') => { self.index += 1; Some(Ok(Token::LeftBrace)) },
-            Some('}') => { self.index += 1; Some(Ok(Token::RightBrace)) },
-            Some('*') => { self.index += 1; Some(Ok(Token::Star)) },
-            Some('.') => { self.index += 1; Some(Ok(Token::Dot)) },
-            Some(',') => { self.index += 1; Some(Ok(Token::Comma)) },
-            Some(';') => { self.index += 1; Some(Ok(Token::Semicolon)) },
-            Some('-') => { self.index += 1; Some(Ok(Token::Minus)) },
-            Some('+') => { self.index += 1; Some(Ok(Token::Plus)) },
-            Some('\n') => { self.index += 1; self.line += 1; Some(Ok(Token::Eol)) },
+        let ret = match self.rest.next() {
+            Some('(') => Some(Ok(Token::LeftParen)),
+            Some(')') => Some(Ok(Token::RightParen)),
+            Some('{') => Some(Ok(Token::LeftBrace)),
+            Some('}') => Some(Ok(Token::RightBrace)),
+            Some('*') => Some(Ok(Token::Star)),
+            Some('.') => Some(Ok(Token::Dot)),
+            Some(',') => Some(Ok(Token::Comma)),
+            Some(';') => Some(Ok(Token::Semicolon)),
+            Some('-') => Some(Ok(Token::Minus)),
+            Some('+') => Some(Ok(Token::Plus)),
+            Some('\n') => { self.line += 1; Some(Ok(Token::Eol)) },
+            Some('=') => {
+                if Some('=') == self.rest.next_if_eq(&'=') {
+                    // next_if_eq相当于peek -> next
+                    Some(Ok(Token::EqualEqual))
+                } else {
+                    // 否则不会消耗下一个字符
+                    Some(Ok(Token::Equal))
+                }
+            }
             Some(ch) => {
                 Some(Err(
                     miette! { "[line {}] Error: Unexpected character: {ch}", self.line }
                 ))
             }
             None => None
-        }
+        };
+        // 无论如何，消耗一个字符
+        self.index += 1;
+        ret
     }
 }
 
