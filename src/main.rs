@@ -13,6 +13,10 @@ pub enum Token {
     RightParen,
     LeftBrace,
     RightBrace,
+    Star,
+    Dot,
+    Comma,
+    Plus,
     Eof
 }
 
@@ -23,6 +27,10 @@ impl Display for Token {
             Token::RightParen => "RIGHT_PAREN ) null",
             Token::LeftBrace => "LEFT_BRACE { null",
             Token::RightBrace => "RIGHT_BRACE } null",
+            Token::Star => "STAR * null",
+            Token::Dot => "DOT . null",
+            Token::Comma => "COMMA , null",
+            Token::Plus => "PLUS + null",
             Token::Eof => "EOF  null",
         })
     }
@@ -63,6 +71,10 @@ impl Iterator for Lexer<'_> {
             Some(')') => { self.index += 1; Some(Ok(Token::RightParen)) },
             Some('{') => { self.index += 1; Some(Ok(Token::LeftBrace)) },
             Some('}') => { self.index += 1; Some(Ok(Token::RightBrace)) },
+            Some('*') => { self.index += 1; Some(Ok(Token::Star)) },
+            Some('.') => { self.index += 1; Some(Ok(Token::Dot)) },
+            Some(',') => { self.index += 1; Some(Ok(Token::Comma)) },
+            Some('+') => { self.index += 1; Some(Ok(Token::Plus)) },
             Some(ch) => {
                 Some(Err(
                     miette! {
