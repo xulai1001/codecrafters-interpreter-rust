@@ -17,6 +17,8 @@ pub enum Token {
     Dot,
     Comma,
     Plus,
+    Minus,
+    Semicolon,
     Eof
 }
 
@@ -30,9 +32,11 @@ impl Display for Token {
             Token::Star => "STAR * null",
             Token::Dot => "DOT . null",
             Token::Comma => "COMMA , null",
+            Token::Semicolon => "SEMICOLON ; null",
             Token::Plus => "PLUS + null",
+            Token::Minus => "MINUS - null",
             Token::Eof => "EOF  null",
-        })
+        }) 
     }
 }
 
@@ -74,6 +78,8 @@ impl Iterator for Lexer<'_> {
             Some('*') => { self.index += 1; Some(Ok(Token::Star)) },
             Some('.') => { self.index += 1; Some(Ok(Token::Dot)) },
             Some(',') => { self.index += 1; Some(Ok(Token::Comma)) },
+            Some(';') => { self.index += 1; Some(Ok(Token::Semicolon)) },
+            Some('-') => { self.index += 1; Some(Ok(Token::Minus)) },
             Some('+') => { self.index += 1; Some(Ok(Token::Plus)) },
             Some(ch) => {
                 Some(Err(
