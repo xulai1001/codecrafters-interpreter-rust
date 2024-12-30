@@ -62,7 +62,7 @@ impl Display for Token {
             Token::Slash => "SLASH / null",
             Token::Comment(comment) => {
                 // 啊?
-                return write!(f, "COMMENT {comment} null");                
+                return write!(f, "COMMENT {comment}");                
             }
             Token::Eof => "EOF  null",
         }) 
@@ -161,6 +161,11 @@ impl Iterator for Lexer<'_> {
                         .take_while(|c| *c != '\r' && *c != '\n')
                         .collect();
                     self.index += comment.chars().count();
+                    
+                    if !cfg!(windows) {
+                        // 上面这种判断，linux系统下会把换行符吃掉
+                        self.line += 1;
+                    }
                     Some(Ok(Token::Comment(comment)))
                 } else {
                     Some(Ok(Token::Slash))
