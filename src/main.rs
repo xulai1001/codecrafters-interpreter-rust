@@ -2,8 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::fmt::Display;
 use std::str::Chars;
-use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
+use miette::{miette, Error, Result, LabeledSpan, WrapErr};
 
 /// 参考rat-718的样例(有问题)  
 /// Token定义
@@ -64,7 +64,12 @@ impl Iterator for Lexer<'_> {
                 Some(Ok(Token::RightParen))
             }
             Some(ch) => {
-                Some(Err(anyhow!("unexpected token: {ch}")))
+                Some(Err(
+                    miette! {
+                        labels = vec![ LabeledSpan::new(Some("here".to_string()), self.index, 1) ],
+                        "Invalid token: {ch}"
+                    }.with_source_code(self.whole.to_string())
+                ))
             }
             None => None
         }
@@ -96,10 +101,11 @@ fn main() -> Result<()> {
             // Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
                 let lexer = Lexer::new(&file_contents);
-                let _: Result<Vec<()>> = lexer.map(|token| {
+                let res: Result<Vec<()>> = lexer.map(|token| {
                     println!("{}", token?);
                     Ok(())
                 }).collect();
+                let _ = res?;
                 println!("EOF  null");
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
