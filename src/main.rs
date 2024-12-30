@@ -128,7 +128,7 @@ fn main() -> Result<()> {
                     match token {
                         Ok(tok) => println!("{tok}"),
                         Err(e) => {
-                            println!("{e}");
+                            eprintln!("{e}");
                             is_err = true;
                         }
                     }
