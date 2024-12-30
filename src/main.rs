@@ -19,6 +19,7 @@ pub enum Token {
     Plus,
     Minus,
     Semicolon,
+    Eol,
     Eof
 }
 
@@ -35,6 +36,7 @@ impl Display for Token {
             Token::Semicolon => "SEMICOLON ; null",
             Token::Plus => "PLUS + null",
             Token::Minus => "MINUS - null",
+            Token::Eol => "EOL  null",
             Token::Eof => "EOF  null",
         }) 
     }
@@ -48,7 +50,9 @@ pub struct Lexer<'de> {
     /// 整个切片，用于错误提示
     whole: &'de str,
     /// 当前位置，用于错误提示
-    index: usize
+    index: usize,
+    /// 行号
+    line: usize
 }
 
 impl <'de> Lexer<'de> {
@@ -57,7 +61,8 @@ impl <'de> Lexer<'de> {
         Self {
             rest: input.chars(), 
             whole: input,
-            index: 0
+            index: 0,
+            line: 1
         }
     }
 }
@@ -81,12 +86,10 @@ impl Iterator for Lexer<'_> {
             Some(';') => { self.index += 1; Some(Ok(Token::Semicolon)) },
             Some('-') => { self.index += 1; Some(Ok(Token::Minus)) },
             Some('+') => { self.index += 1; Some(Ok(Token::Plus)) },
+            Some('\n') => { self.index += 1; self.line += 1; Some(Ok(Token::Eol)) },
             Some(ch) => {
                 Some(Err(
-                    miette! {
-                        labels = vec![ LabeledSpan::new(Some("here".to_string()), self.index, 1) ],
-                        "Invalid token: {ch}"
-                    }.with_source_code(self.whole.to_string())
+                    miette! { "[line {}] Error: Unexpected character: {ch}", self.line }
                 ))
             }
             None => None
@@ -119,11 +122,12 @@ fn main() -> Result<()> {
             // Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
                 let lexer = Lexer::new(&file_contents);
-                let res: Result<Vec<()>> = lexer.map(|token| {
-                    println!("{}", token?);
-                    Ok(())
-                }).collect();
-                let _ = res?;
+                for token in lexer {
+                    match token {
+                        Ok(tok) => println!("{tok}"),
+                        Err(e) => println!("{e}")
+                    }
+                }
                 println!("EOF  null");
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
