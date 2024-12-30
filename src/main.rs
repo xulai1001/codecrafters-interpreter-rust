@@ -21,7 +21,7 @@ pub enum Token {
     Plus,
     Minus,
     Semicolon,
-    Eol,
+    Whitespace,
     // 2字符Token
     Equal,
     EqualEqual,
@@ -50,7 +50,7 @@ impl Display for Token {
             Token::Semicolon => "SEMICOLON ; null",
             Token::Plus => "PLUS + null",
             Token::Minus => "MINUS - null",
-            Token::Eol => "EOL  null",
+            Token::Whitespace => "SPACE  null",
             Token::Equal => "EQUAL = null",
             Token::EqualEqual => "EQUAL_EQUAL == null",
             Token::Bang => "BANG ! null",
@@ -113,16 +113,7 @@ impl Iterator for Lexer<'_> {
             Some(';') => Some(Ok(Token::Semicolon)),
             Some('-') => Some(Ok(Token::Minus)),
             Some('+') => Some(Ok(Token::Plus)),
-            Some('\r') => {
-                // 如果后面有\n 就也吃掉，否则只捕获\r
-                if Some('\n') == self.rest.next_if_eq(&'\n') {
-                    self.index += 1;
-                    Some(Ok(Token::Eol))
-                } else {
-                    Some(Ok(Token::Eol))
-                }
-            },
-            Some('\n') => Some(Ok(Token::Eol)),
+            Some('\r') | Some('\n') | Some(' ') | Some('\t') => Some(Ok(Token::Whitespace)),
             Some('=') => {
                 if Some('=') == self.rest.next_if_eq(&'=') {
                     // next_if_eq相当于peek -> next
@@ -213,7 +204,7 @@ fn main() -> Result<()> {
                 for token in lexer {
                     match token {
                         // 不打印的暂且在这里判断
-                        Ok(Token::Eol | Token::Comment(_)) => {}
+                        Ok(Token::Whitespace | Token::Comment(_)) => {}
                         Ok(tok) => {
                             println!("{tok}");
                         }
