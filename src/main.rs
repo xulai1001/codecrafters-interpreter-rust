@@ -31,6 +31,9 @@ pub enum Token {
     LessEqual,
     Greater,
     GreaterEqual,
+    // 除号和注释
+    Slash,
+    Comment(String),
     Eof
 }
 
@@ -56,6 +59,11 @@ impl Display for Token {
             Token::LessEqual => "LESS_EQUAL <= null",
             Token::Greater => "GREATER > null",
             Token::GreaterEqual => "GREATER_EQUAL >= null",
+            Token::Slash => "SLASH / null",
+            Token::Comment(comment) => {
+                // 啊?
+                return write!(f, "COMMENT {comment} null");                
+            }
             Token::Eof => "EOF  null",
         }) 
     }
@@ -149,6 +157,20 @@ impl Iterator for Lexer<'_> {
                     Some(Ok(Token::Greater))
                 }
             }
+            Some('/') => {
+                if Some('/') == self.rest.next_if_eq(&'/') {
+                    self.index += 1;
+                    // 注释!
+                    let comment: String = self.rest
+                        .by_ref()
+                        .take_while(|c| *c != '\r' && *c != '\n')
+                        .collect();
+                    self.index += comment.chars().count();
+                    Some(Ok(Token::Comment(comment)))
+                } else {
+                    Some(Ok(Token::Slash))
+                }
+            }
             Some(ch) => {
                 Some(Err(
                     miette! { "[line {}] Error: Unexpected character: {ch}", self.line }
@@ -190,7 +212,11 @@ fn main() -> Result<()> {
                 let lexer = Lexer::new(&file_contents);
                 for token in lexer {
                     match token {
-                        Ok(tok) => println!("{tok}"),
+                        // 不打印的暂且在这里判断
+                        Ok(Token::Eol | Token::Comment(_)) => {}
+                        Ok(tok) => {
+                            println!("{tok}");
+                        }
                         Err(e) => {
                             eprintln!("{e}");
                             is_err = true;
