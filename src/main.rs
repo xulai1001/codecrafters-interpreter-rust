@@ -25,6 +25,8 @@ pub enum Token {
     // 2字符Token
     Equal,
     EqualEqual,
+    Bang,
+    BangEqual,
     Eof
 }
 
@@ -44,6 +46,8 @@ impl Display for Token {
             Token::Eol => "EOL  null",
             Token::Equal => "EQUAL = null",
             Token::EqualEqual => "EQUAL_EQUAL == null",
+            Token::Bang => "BANG ! null",
+            Token::BangEqual => "BANG_EQUAL != null",
             Token::Eof => "EOF  null",
         }) 
     }
@@ -93,14 +97,32 @@ impl Iterator for Lexer<'_> {
             Some(';') => Some(Ok(Token::Semicolon)),
             Some('-') => Some(Ok(Token::Minus)),
             Some('+') => Some(Ok(Token::Plus)),
-            Some('\n') => { self.line += 1; Some(Ok(Token::Eol)) },
+            Some('\r') => {
+                // 如果后面有\n 就也吃掉，否则只捕获\r
+                if Some('\n') == self.rest.next_if_eq(&'\n') {
+                    self.index += 1;
+                    Some(Ok(Token::Eol))
+                } else {
+                    Some(Ok(Token::Eol))
+                }
+            },
+            Some('\n') => Some(Ok(Token::Eol)),
             Some('=') => {
                 if Some('=') == self.rest.next_if_eq(&'=') {
                     // next_if_eq相当于peek -> next
+                    self.index += 1;
                     Some(Ok(Token::EqualEqual))
                 } else {
                     // 否则不会消耗下一个字符
                     Some(Ok(Token::Equal))
+                }
+            }
+            Some('!') => {
+                if Some('=') == self.rest.next_if_eq(&'=') {
+                    self.index += 1;
+                    Some(Ok(Token::BangEqual))
+                } else {
+                    Some(Ok(Token::Bang))
                 }
             }
             Some(ch) => {
