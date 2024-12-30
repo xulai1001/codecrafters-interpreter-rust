@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::fmt::Display;
 use std::str::Chars;
 use clap::{Parser, Subcommand};
-use miette::{miette, Error, Result, LabeledSpan, WrapErr};
+use miette::{miette, Result, LabeledSpan};
 
 /// 参考rat-718的样例(有问题)  
 /// Token定义
@@ -11,6 +11,8 @@ use miette::{miette, Error, Result, LabeledSpan, WrapErr};
 pub enum Token {
     LeftParen,
     RightParen,
+    LeftBrace,
+    RightBrace,
     Eof
 }
 
@@ -19,6 +21,8 @@ impl Display for Token {
         write!(f, "{}", match self {
             Token::LeftParen => "LEFT_PAREN ( null",
             Token::RightParen => "RIGHT_PAREN ) null",
+            Token::LeftBrace => "LEFT_BRACE { null",
+            Token::RightBrace => "RIGHT_BRACE } null",
             Token::Eof => "EOF  null",
         })
     }
@@ -55,14 +59,10 @@ impl Iterator for Lexer<'_> {
     // peek?
     fn next(&mut self) -> Option<Self::Item> {
         match self.rest.next() {
-            Some('(') => {
-                self.index += 1;
-                Some(Ok(Token::LeftParen))
-            }
-            Some(')') => {
-                self.index += 1;
-                Some(Ok(Token::RightParen))
-            }
+            Some('(') => { self.index += 1; Some(Ok(Token::LeftParen)) },
+            Some(')') => { self.index += 1; Some(Ok(Token::RightParen)) },
+            Some('{') => { self.index += 1; Some(Ok(Token::LeftBrace)) },
+            Some('}') => { self.index += 1; Some(Ok(Token::RightBrace)) },
             Some(ch) => {
                 Some(Err(
                     miette! {
