@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::fmt::Display;
 use std::str::Chars;
+use std::process::exit;
 use clap::{Parser, Subcommand};
 use miette::{miette, Result, LabeledSpan};
 
@@ -52,7 +53,7 @@ pub struct Lexer<'de> {
     /// 当前位置，用于错误提示
     index: usize,
     /// 行号
-    line: usize
+    line: usize,
 }
 
 impl <'de> Lexer<'de> {
@@ -118,6 +119,7 @@ fn main() -> Result<()> {
                 eprintln!("Failed to read file {:?}", filename);
                 String::new()
             });
+            let mut is_err = false;
 
             // Uncomment this block to pass the first stage
             if !file_contents.is_empty() {
@@ -125,14 +127,21 @@ fn main() -> Result<()> {
                 for token in lexer {
                     match token {
                         Ok(tok) => println!("{tok}"),
-                        Err(e) => println!("{e}")
+                        Err(e) => {
+                            println!("{e}");
+                            is_err = true;
+                        }
                     }
                 }
                 println!("EOF  null");
+                if is_err {
+                    exit(65);
+                }
             } else {
                 println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
             }
         }
     }
+
     Ok(())
 }
