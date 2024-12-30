@@ -113,7 +113,11 @@ impl Iterator for Lexer<'_> {
             Some(';') => Some(Ok(Token::Semicolon)),
             Some('-') => Some(Ok(Token::Minus)),
             Some('+') => Some(Ok(Token::Plus)),
-            Some('\r') | Some('\n') | Some(' ') | Some('\t') => Some(Ok(Token::Whitespace)),
+            Some('\r') | Some(' ') | Some('\t') => Some(Ok(Token::Whitespace)),
+            Some('\n') => {
+                self.line += 1;
+                Some(Ok(Token::Whitespace))
+            }
             Some('=') => {
                 if Some('=') == self.rest.next_if_eq(&'=') {
                     // next_if_eq相当于peek -> next
