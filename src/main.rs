@@ -34,6 +34,7 @@ pub enum Token {
     // 除号和注释
     Slash,
     Comment(String),
+    String(String),
     Eof
 }
 
@@ -61,8 +62,11 @@ impl Display for Token {
             Token::GreaterEqual => "GREATER_EQUAL >= null",
             Token::Slash => "SLASH / null",
             Token::Comment(comment) => {
-                // 啊?
+                // 返回Never的分支可以和其他match分支混用
                 return write!(f, "COMMENT {comment}");                
+            },
+            Token::String(s) => {
+                return write!(f, "STRING \"{s}\" {s}");
             }
             Token::Eof => "EOF  null",
         }) 
@@ -91,6 +95,23 @@ impl <'de> Lexer<'de> {
             index: 0,
             line: 1
         }
+    }
+}
+
+impl Lexer<'_> {
+    /// 基础字符串字面量（不考虑转义）
+    fn parse_string(&mut self) -> Result<Token> {
+        self.index += 1;    // 先消耗开始的双引号
+        let start = self.index;
+        while let Some(c) = self.rest.next() {
+            self.index += 1;    // 先消耗一个字符
+            match c {
+                '"' => return Ok(Token::String(self.whole[start..self.index-1].to_string())),
+                '\n' => self.line += 1,
+                _ => {}
+            }
+        }
+        Err(miette!{ "[line {}] Unterminated string.", self.line })
     }
 }
 
@@ -171,6 +192,7 @@ impl Iterator for Lexer<'_> {
                     Some(Ok(Token::Slash))
                 }
             }
+            Some('"') => Some(self.parse_string()),
             Some(ch) => {
                 Some(Err(
                     miette! { "[line {}] Error: Unexpected character: {ch}", self.line }
