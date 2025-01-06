@@ -6,6 +6,16 @@ use std::str::Chars;
 use std::process::exit;
 use clap::{Parser, Subcommand};
 use miette::{miette, Result};
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref RESERVED_WORDS: Vec<&'static str> = vec![
+        "and", "class", "else", "false",
+        "for", "fun", "if", "nil",
+        "or", "print", "return", "super",
+        "this", "true", "var", "while"
+    ];
+}
 
 /// 参考rat-718的样例(有问题)  
 /// Token定义
@@ -37,6 +47,7 @@ pub enum Token {
     String(String),
     Number(String),
     Ident(String),
+    Reserved(String),
     Eof
 }
 
@@ -90,6 +101,9 @@ impl Display for Token {
             }
             Token::Ident(s) => {
                 return write!(f, "IDENTIFIER {s} null");
+            }
+            Token::Reserved(s) => {
+                return write!(f, "{} {s} null", s.to_uppercase());
             }
             Token::Eof => "EOF  null",
         }) 
@@ -177,7 +191,12 @@ impl Lexer<'_> {
                 _ => break
             }
         }
-        Ok(Token::Ident(self.whole[start..self.index].to_string()))
+        let ident = self.whole[start..self.index].to_string();
+        if RESERVED_WORDS.contains(&ident.as_str()) {
+            Ok(Token::Reserved(ident))
+        } else {
+            Ok(Token::Ident(ident))
+        }        
     }
 }
 
