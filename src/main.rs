@@ -79,7 +79,13 @@ impl Display for Token {
                 return write!(f, "STRING \"{s}\" {s}");
             }
             Token::Number(s) => {
-                return write!(f, "NUMBER {s} {}", self.parse_num());
+                let num = self.parse_num();
+                if num == num.trunc() {
+                    // 是整数时额外输出".0". 这太怪了
+                    return write!(f, "NUMBER {s} {}.0", num);
+                } else {
+                    return write!(f, "NUMBER {s} {num}");
+                }
             }
             Token::Eof => "EOF  null",
         }) 
