@@ -1,10 +1,10 @@
 () #    {}
 @
 $
-("foo"+"world") != "other_string"
-322
+("foo"+"world") != other_string
+322 - __ascii_doc
 0
-322.23
+_322.23
 322.23.242
 .33
 24.00

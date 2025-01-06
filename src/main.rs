@@ -36,6 +36,7 @@ pub enum Token {
     Comment(String),
     String(String),
     Number(String),
+    Ident(String),
     Eof
 }
 
@@ -82,10 +83,13 @@ impl Display for Token {
                 let num = self.parse_num();
                 if num == num.trunc() {
                     // 是整数时额外输出".0". 这太怪了
-                    return write!(f, "NUMBER {s} {}.0", num);
+                    return write!(f, "NUMBER {s} {num}.0");
                 } else {
                     return write!(f, "NUMBER {s} {num}");
                 }
+            }
+            Token::Ident(s) => {
+                return write!(f, "IDENTIFIER {s} null");
             }
             Token::Eof => "EOF  null",
         }) 
@@ -162,6 +166,18 @@ impl Lexer<'_> {
             }
         }
         Ok(Token::Number(self.whole[start..self.index].to_string()))
+    }
+
+    fn parse_ident(&mut self) -> Result<Token> {
+        let start = self.index;
+        self.index += 1;
+        while let Some(c) = self.rest.peek() {
+            match c {
+                'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => self.advance(),
+                _ => break
+            }
+        }
+        Ok(Token::Ident(self.whole[start..self.index].to_string()))
     }
 }
 
@@ -251,6 +267,10 @@ impl Iterator for Lexer<'_> {
             Some('0'..='9') => {
                 consume = false;
                 Some(self.parse_number())
+            }
+            Some('A'..='Z') | Some('a'..='z') | Some('_') => {
+                consume = false;
+                Some(self.parse_ident())
             }
             Some(ch) => {
                 Some(Err(
