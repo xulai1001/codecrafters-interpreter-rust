@@ -1,13 +1,8 @@
-() #    {}
-@
-$
-("foo"+"world") != other_string
-322 - __ascii_doc
-0
-_322.23
-322.23.242
-.33
-24.00
-223..
-""stats
-#
+ {
+// This is a complex test case
+str1 = "Test"
+str2 = "Case"
+num1 = 100
+num2 = 200.00
+result = (str1 == str2) != ((num1 + num2) >= 300)
+}

@@ -247,14 +247,10 @@ impl Iterator for Lexer<'_> {
                     // 注释!
                     let comment: String = self.rest
                         .by_ref()
-                        .take_while(|c| *c != '\r' && *c != '\n')
+                        .take_while(|c| *c != '\n')
                         .collect();
-                    self.index += comment.chars().count();
-                    
-                    if !cfg!(windows) {
-                        // 上面这种判断，linux系统下会把换行符吃掉
-                        self.line += 1;
-                    }
+                    self.index += comment.chars().count()+1;
+                    self.line += 1;
                     Some(Ok(Token::Comment(comment)))
                 } else {
                     Some(Ok(Token::Slash))
