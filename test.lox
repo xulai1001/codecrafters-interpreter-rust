@@ -1,11 +1,6 @@
 () #    {}
 @
 $
-+++
-"let's go!" // let's go!
-+++
-"
-let's go!
-multiline
+("foo"+"world") != "other_string"
 ""stats
 #

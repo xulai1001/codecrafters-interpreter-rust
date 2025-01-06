@@ -5,7 +5,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 use std::process::exit;
 use clap::{Parser, Subcommand};
-use miette::{miette, Result, LabeledSpan};
+use miette::{miette, Result};
 
 /// 参考rat-718的样例(有问题)  
 /// Token定义
@@ -104,11 +104,13 @@ impl Lexer<'_> {
         self.index += 1;    // 先消耗开始的双引号
         let start = self.index;
         while let Some(c) = self.rest.next() {
-            self.index += 1;    // 先消耗一个字符
             match c {
-                '"' => return Ok(Token::String(self.whole[start..self.index-1].to_string())),
-                '\n' => self.line += 1,
-                _ => {}
+                '"' => return Ok(Token::String(self.whole[start..self.index].to_string())),
+                '\n' => {
+                    self.index += 1;
+                    self.line += 1;
+                }
+                _ => self.index += 1
             }
         }
         Err(miette!{ "[line {}] Error: Unterminated string.", self.line })
