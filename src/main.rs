@@ -111,7 +111,7 @@ impl Lexer<'_> {
                 _ => {}
             }
         }
-        Err(miette!{ "[line {}] Unterminated string.", self.line })
+        Err(miette!{ "[line {}] Error: Unterminated string.", self.line })
     }
 }
 
