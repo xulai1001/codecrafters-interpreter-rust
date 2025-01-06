@@ -35,7 +35,17 @@ pub enum Token {
     Slash,
     Comment(String),
     String(String),
+    Number(String),
     Eof
+}
+
+impl Token {
+    fn parse_num(&self) -> f64 {
+        match self {
+            Token::Number(s) => s.parse::<f64>().unwrap(),
+            _ => panic!("Not a number.")
+        }
+    }
 }
 
 impl Display for Token {
@@ -68,9 +78,13 @@ impl Display for Token {
             Token::String(s) => {
                 return write!(f, "STRING \"{s}\" {s}");
             }
+            Token::Number(s) => {
+                return write!(f, "NUMBER {s} {}", self.parse_num());
+            }
             Token::Eof => "EOF  null",
         }) 
     }
+
 }
 
 /// 使用迭代器实现的词法分析器的内部状态  
@@ -99,21 +113,49 @@ impl <'de> Lexer<'de> {
 }
 
 impl Lexer<'_> {
+    // 吃掉一个字符
+    fn advance(&mut self) {
+        let _ = self.rest.next();
+        self.index += 1;
+    }
+
     /// 基础字符串字面量（不考虑转义）
     fn parse_string(&mut self) -> Result<Token> {
         self.index += 1;    // 先消耗开始的双引号
         let start = self.index;
         while let Some(c) = self.rest.next() {
+            self.index += 1;
             match c {
-                '"' => return Ok(Token::String(self.whole[start..self.index].to_string())),
-                '\n' => {
-                    self.index += 1;
-                    self.line += 1;
-                }
-                _ => self.index += 1
+                '"' => return Ok(Token::String(self.whole[start..self.index-1].to_string())),
+                '\n' => self.line += 1,
+                _ => {}
             }
         }
-        Err(miette!{ "[line {}] Error: Unterminated string.", self.line })
+        Err(miette!("[line {}] Error: Unterminated string.", self.line))
+    }
+
+    fn parse_number(&mut self) -> Result<Token> {
+        let start = self.index;
+        self.index += 1;    // 已经吃了一个
+        let mut frac_part = false;  // 是否在小数部分
+        while let Some(c) = self.rest.peek() {  // 数字只能peek，防止多取字符
+            match c {
+                '0'..='9' => self.advance(),
+                '.' => {
+                    if frac_part {
+                        break;
+                    } else {
+                        self.advance(); // 先消耗小数点
+                        match self.rest.peek() {
+                            Some('0'..='9') => frac_part = true,
+                            _ => return Err(miette!("[line {}] Error: Unexpected '.' in number.", self.line))
+                        }
+                    }
+                },
+                _ => break
+            }
+        }
+        Ok(Token::Number(self.whole[start..self.index].to_string()))
     }
 }
 
@@ -125,6 +167,8 @@ impl Iterator for Lexer<'_> {
 
     // 引入peek(next_if_eq)
     fn next(&mut self) -> Option<Self::Item> {
+        let mut consume = true; // 如果是字符串或者数字就不在最后index+1
+
         let ret = match self.rest.next() {
             Some('(') => Some(Ok(Token::LeftParen)),
             Some(')') => Some(Ok(Token::RightParen)),
@@ -194,7 +238,14 @@ impl Iterator for Lexer<'_> {
                     Some(Ok(Token::Slash))
                 }
             }
-            Some('"') => Some(self.parse_string()),
+            Some('"') => {
+                consume = false;
+                Some(self.parse_string())
+            },
+            Some('0'..='9') => {
+                consume = false;
+                Some(self.parse_number())
+            }
             Some(ch) => {
                 Some(Err(
                     miette! { "[line {}] Error: Unexpected character: {ch}", self.line }
@@ -202,8 +253,9 @@ impl Iterator for Lexer<'_> {
             }
             None => None
         };
-        // 无论如何，消耗一个字符
-        self.index += 1;
+        if consume {
+            self.index += 1;
+        }
         ret
     }
 }
